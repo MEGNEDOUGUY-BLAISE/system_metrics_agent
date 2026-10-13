@@ -9,8 +9,9 @@ from app.collector import (
 )
 
 
+@patch("app.collector.platform.system", return_value="Linux")
 @patch("app.collector.subprocess.run")
-def test_get_load_average_success(mock_run):
+def test_get_load_average_success(mock_run, mock_system):
     mock_run.return_value = Mock(
         stdout=" 10:00:00 up 2 days, load average: 0.10, 0.20, 0.30\n"
     )
@@ -24,12 +25,24 @@ def test_get_load_average_success(mock_run):
     }
 
 
+@patch("app.collector.platform.system", return_value="Linux")
 @patch("app.collector.subprocess.run")
-def test_get_load_average_command_error(mock_run):
+def test_get_load_average_command_error(mock_run, mock_system):
     mock_run.side_effect = FileNotFoundError("uptime absent")
 
     with pytest.raises(MetricsCollectionError):
         get_load_average()
+
+
+@patch("app.collector.platform.system", return_value="Windows")
+def test_get_load_average_windows(mock_system):
+    result = get_load_average()
+
+    assert result == {
+        "load_1m": None,
+        "load_5m": None,
+        "load_15m": None,
+    }
 
 
 @patch("app.collector.get_load_average")

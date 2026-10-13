@@ -1,1 +1,28 @@
+# Git et CI
+.git
+.gitignore
+.github
+
+# Environnements virtuels et caches Python
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.coverage
+coverage.xml
+htmlcov
+
+# Secrets : ne jamais les copier dans une image
 .env
+
+# Tests : inutiles en production
+app/tests
+
+# Fichiers sans utilité dans l'image
+*.md
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+sonar-project.properties
+requirements-dev.txt

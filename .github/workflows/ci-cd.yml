@@ -1,0 +1,94 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+
+# Droits minimaux du jeton GitHub : lecture du code uniquement
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests, lint et SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code (historique complet pour SonarQube)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Installer Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+                  python-version: "3.12"
+
+      - name: Installer les dépendances (versions et empreintes verrouillées)
+        run: |
+          python -m pip install --require-hashes --only-binary :all: -r requirements-dev.txt  
+
+      - name: Vérifier le formatage et le style
+        run: |
+          black --check app
+          flake8 app --count --max-complexity=10 --max-line-length=88 --statistics
+
+      - name: Tests unitaires avec couverture
+        run: pytest -q --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Analyse SonarQube et Quality Gate (bloquante)
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  build-scan-push:
+    name: Image ${{ matrix.component }} (build, Trivy, push)
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, agent]
+    env:
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/metrics-${{ matrix.component }}
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Préparer Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Construire l'image (chargée localement pour le scan)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.${{ matrix.component }}
+          load: true
+          push: false
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Scanner l'image avec Trivy (échec si HIGH/CRITICAL corrigeable)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+      - name: Connexion à Docker Hub (main uniquement)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pousser l'image (main uniquement, hors pull request)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"

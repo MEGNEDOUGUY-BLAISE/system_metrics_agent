@@ -1,0 +1,36 @@
+name: system-metrics
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: metrics-api:local
+    ports:
+      - "8000:8000"
+    networks:
+      - metrics-net
+    restart: unless-stopped
+    # Le HEALTHCHECK est défini dans Dockerfile.api :
+    # c'est lui que "condition: service_healthy" attend.
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    image: metrics-agent:local
+    env_file:
+      - .env
+    environment:
+      # Prioritaire sur le .env : l'agent joint l'API par son nom de service.
+      METRICS_ENDPOINT: http://api:8000/metrics
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - metrics-net
+    restart: unless-stopped
+
+networks:
+  metrics-net:
+    driver: bridge

@@ -1,4 +1,5 @@
 """API FastAPI de réception des métriques."""
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +37,7 @@ def get_metrics() -> dict[str, Any]:
         "metrics": received_metrics,
     }
 
+
 @app.get("/health")
 def health() -> dict[str, str]:
     """Vérifie l'état de l'API."""
@@ -51,11 +53,7 @@ def receive_metrics(payload: MetricsPayload) -> dict[str, Any]:
     }
     received_metrics.append(item)
 
-    logger.info(
-        "Métriques reçues de %s. Total=%s",
-        payload.agent,
-        len(received_metrics),
-    )
+    logger.info("Métriques reçues. Total=%s", len(received_metrics))
 
     return {
         "status": "received",

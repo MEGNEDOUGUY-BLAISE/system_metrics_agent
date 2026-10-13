@@ -1,0 +1,40 @@
+# ========== Étape 1 : builder ==========
+FROM python:3.12.15-slim-trixie AS builder
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements-agent.txt .
+# --require-hashes : refuse tout paquet dont l'empreinte ne correspond pas au fichier verrouillé
+# --only-binary :all: : uniquement des wheels, aucun script d'installation exécuté
+RUN pip install --no-cache-dir --require-hashes --only-binary :all: -r requirements-agent.txt
+
+
+# ========== Étape 2 : image finale ==========
+FROM python:3.12.15-slim-trixie
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# Le collecteur exécute "uptime" via subprocess : la commande est absente
+# de l'image slim, elle est fournie par le paquet Debian procps.
+# Mode non interactif pour apt (évite les avertissements debconf pendant le build)
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends procps \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --no-create-home app
+
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY app/ ./app/
+
+USER app
+
+# Configuration injectée à l'exécution (METRICS_ENDPOINT,
+# COLLECTION_INTERVAL, REQUEST_TIMEOUT) : rien n'est figé dans l'image.
+CMD ["python", "-m", "app.agent"]
