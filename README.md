@@ -32,12 +32,13 @@ system_metrics_agent/
 │   ├── collector.py
 │   ├── config.py
 │   ├── formatter.py
-│   └── sender.py
-├── tests/
-│   ├── test_api.py
-│   ├── test_collector.py
-│   ├── test_formatter.py
-│   └── test_sender.py
+│   ├── sender.py
+│   └── tests/
+│       ├── __init__.py
+│       ├── test_api.py
+│       ├── test_collector.py
+│       ├── test_formatter.py
+│       └── test_sender.py
 ├── .env.example
 ├── requirements.txt
 └── README.md
