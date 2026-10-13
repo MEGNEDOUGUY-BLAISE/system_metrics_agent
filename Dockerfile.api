@@ -1,0 +1,40 @@
+# ========== Étape 1 : builder ==========
+# Installe les dépendances dans un environnement virtuel isolé.
+FROM python:3.12.15-slim-trixie AS builder
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# requirements copié AVANT le code : cette couche reste en cache
+# tant que les dépendances ne changent pas.
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+
+# ========== Étape 2 : image finale ==========
+# Ne contient ni pip cache ni fichiers de build : seulement le venv et le code.
+FROM python:3.12.15-slim-trixie
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# Utilisateur non-root dédié
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --no-create-home app
+
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY app/ ./app/
+
+USER app
+
+EXPOSE 8000
+
+# Vérifie que l'API répond (curl n'existe pas dans l'image slim : on utilise Python)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+
+# Production : pas de --reload, écoute sur toutes les interfaces du conteneur
+CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"]
