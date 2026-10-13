@@ -5,7 +5,9 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements-agent.txt .
-RUN pip install --no-cache-dir -r requirements-agent.txt
+# --require-hashes : refuse tout paquet dont l'empreinte ne correspond pas au fichier verrouillé
+# --only-binary :all: : uniquement des wheels, aucun script d'installation exécuté
+RUN pip install --no-cache-dir --require-hashes --only-binary :all: -r requirements-agent.txt
 
 
 # ========== Étape 2 : image finale ==========

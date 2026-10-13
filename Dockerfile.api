@@ -8,7 +8,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 # requirements copié AVANT le code : cette couche reste en cache
 # tant que les dépendances ne changent pas.
 COPY requirements-api.txt .
-RUN pip install --no-cache-dir -r requirements-api.txt
+# --require-hashes : refuse tout paquet dont l'empreinte ne correspond pas au fichier verrouillé
+# --only-binary :all: : uniquement des wheels, aucun script d'installation exécuté
+RUN pip install --no-cache-dir --require-hashes --only-binary :all: -r requirements-api.txt
 
 
 # ========== Étape 2 : image finale ==========
