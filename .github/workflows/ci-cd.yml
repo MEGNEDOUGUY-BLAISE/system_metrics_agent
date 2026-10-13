@@ -23,11 +23,11 @@ jobs:
       - name: Installer Python 3.12
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: "3.12"
+                  python-version: "3.12"
 
-            - name: Installer les dépendances (versions et empreintes verrouillées)
+      - name: Installer les dépendances (versions et empreintes verrouillées)
         run: |
-          python -m pip install --require-hashes --only-binary :all: -r requirements-dev.txt
+          python -m pip install --require-hashes --only-binary :all: -r requirements-dev.txt  
 
       - name: Vérifier le formatage et le style
         run: |
