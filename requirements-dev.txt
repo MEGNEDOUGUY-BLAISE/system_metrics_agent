@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8.0.0
+pytest-cov>=6.0.0
+httpx2>=1.0.0
+flake8>=7.4.1
+black>=26.10.0
