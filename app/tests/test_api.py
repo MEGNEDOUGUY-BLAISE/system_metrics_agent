@@ -24,8 +24,7 @@ def clear_metrics():
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ko"}  
-# echec volontaire (demonstration)
+    assert response.json() == {"status": "ok"}
 
 
 def test_latest_metrics_empty():
